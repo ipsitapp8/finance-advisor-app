@@ -1,0 +1,94 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("ADMIN") // ADMIN, VIEWER
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Client {
+  id          String     @id @default(cuid())
+  name        String
+  phone       String
+  email       String?
+  address     String?
+  dateOfBirth DateTime?
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  policies    Policy[]
+  documents   Document[]
+  reminders   Reminder[]
+}
+
+model Policy {
+  id            String       @id @default(cuid())
+  policyNumber  String       @unique
+  policyType    String       // LIC, MUTUAL_FUND, HEALTH_INSURANCE, TERM_INSURANCE, ULIP, PENSION, CHILD_PLAN, OTHER
+  policyName    String
+  premiumAmount Float
+  premiumFreq   String       @default("ANNUAL") // MONTHLY, QUARTERLY, HALF_YEARLY, ANNUAL, ONE_TIME
+  startDate     DateTime
+  dueDate       DateTime
+  maturityDate  DateTime?
+  status        String       @default("ACTIVE") // ACTIVE, LAPSED, MATURED, SURRENDERED, PENDING
+  sumAssured    Float?
+  notes         String?
+  clientId      String
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+}
+
+model Reminder {
+  id          String         @id @default(cuid())
+  type        String         // PREMIUM_DUE, PREMIUM_OVERDUE, BIRTHDAY, POLICY_RENEWAL, POLICY_MATURITY, GENERAL
+  title       String
+  description String?
+  dueDate     DateTime
+  isRead      Boolean        @default(false)
+  clientId    String
+  client      Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  createdAt   DateTime       @default(now())
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  name       String
+  fileUrl    String
+  fileType   String
+  fileSize   Int
+  clientId   String
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  uploadedAt DateTime @default(now())
+}
+
+model Testimonial {
+  id        String   @id @default(cuid())
+  clientName String
+  content   String
+  rating    Int      @default(5)
+  isPublic  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
