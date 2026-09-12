@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
 import { clientSchema } from "@/lib/validations";
+import { requireAuth, requireRole } from "@/lib/rbac";
+import { apiRateLimiter, getClientIp, rateLimitError } from "@/lib/rate-limit";
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
+    // Rate limiting
+    const ip = getClientIp(req);
+    const rateLimitOk = apiRateLimiter.check(100, ip);
+    if (!rateLimitOk) {
+      return rateLimitError(60);
+    }
+
+    // Authentication check
+    const user = await requireAuth();
+    if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -39,9 +47,17 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limiting
+    const ip = getClientIp(req);
+    const rateLimitOk = apiRateLimiter.check(20, ip);
+    if (!rateLimitOk) {
+      return rateLimitError(60);
+    }
+
+    // Role-based access control - only ADMIN can update clients
+    const authResult = await requireRole(["ADMIN"]);
+    if ("error" in authResult) {
+      return authResult.error;
     }
 
     const body = await req.json();
@@ -77,9 +93,17 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Rate limiting
+    const ip = getClientIp(req);
+    const rateLimitOk = apiRateLimiter.check(10, ip);
+    if (!rateLimitOk) {
+      return rateLimitError(60);
+    }
+
+    // Role-based access control - only ADMIN can delete clients
+    const authResult = await requireRole(["ADMIN"]);
+    if ("error" in authResult) {
+      return authResult.error;
     }
 
     // Verify client exists
